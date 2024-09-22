@@ -57,8 +57,8 @@ func main(){
 	
 	app.Get("/api/todos",getTodos)
 	app.Post("/api/todos",createTodo)
-	// app.Patch("/api/todos/:id",updateTodo)
-	// app.Delete("/api/todos/:id",deleteTodo)
+	app.Patch("/api/todos/:id",updateTodo)
+	app.Delete("/api/todos/:id",deleteTodo)
 
 	port:=os.Getenv("PORT")
 
@@ -81,13 +81,13 @@ defer cursor.Close(context.Background())
 
 fmt.Println("Cursor",cursor)
 fmt.Println("Context.Background()",context.Background())
-
+ 
 for cursor.Next(context.Background()){
 	var todo Todo
 	if err:=cursor.Decode(&todo); err!=nil{
 		return err
 	}
-fmt.Println("Todo",todo)
+// fmt.Println("Todo",todo)
 
 	todos=append(todos, todo)
 }
@@ -118,9 +118,40 @@ fmt.Println("todo.ID=",todo)
 	return c.Status(201).JSON(todo)
 
 }
-// func updateTodo(c*fiber.Ctx)error{
+func updateTodo(c*fiber.Ctx)error{
+id:=c.Params("id")
+objectId,err:=primitive.ObjectIDFromHex(id)
 
-// }
-// func deleteTodo(c*fiber.Ctx)error{
+if err!=nil{
+	return c.Status(400).JSON(fiber.Map{"error":"Invalid todo Id"})
+}
+filter:=bson.M{"_id":objectId}
+update:=bson.M{"$set":bson.M{"completed":true}}
 
-// }
+sto,err:=collection.UpdateOne(context.Background(),filter,update)
+
+fmt.Printf("Value of sto: %+v\n", sto)
+
+if err!=nil{
+	return c.Status(400).JSON(fiber.Map{"error":"Invalid todo Id"})
+}
+
+return c.Status(200).JSON(fiber.Map{"success":true})
+}
+
+func deleteTodo(c*fiber.Ctx)error{
+id:=c.Params("id")
+
+objectId,err:=primitive.ObjectIDFromHex(id)
+
+if err!=nil{
+	return c.Status(400).JSON(fiber.Map{"error":"invalid"})
+}
+filter:=bson.M{"_id":objectId}
+_,err=collection.DeleteOne(context.Background(),filter)
+if err!=nil{
+	return err
+}
+
+return c.Status(200).JSON(fiber.Map{"success":true})
+}
